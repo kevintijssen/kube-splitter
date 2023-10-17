@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# Default Variables
+VERBOSE="false"
+
+function main() {
+  while getopts ":f:o:vh" flag; do
+    case "${flag}" in
+      v) VERBOSE="true" ;;
+      f) INPUT_FILE=$OPTARG;;
+      o) OUTPUT_DIR=$OPTARG;;
+      h) usage ;;
+      :) printf "missing argument for -%s\n" "$OPTARG" >&2; echo "$usage" >&2; exit 1;;
+     \?) error "Unexpected flag $OPTARG"; usage; exit 1;;
+    esac
+  done
+
+  readonly INPUT_FILE
+  readonly OUTPUT_DIR
+  readonly VERBOSE
+
+  if [[ "${VERBOSE}" == "true" ]]; then
+    set -x
+  fi
+
+  if [ ! "$INPUT_FILE" ]; then
+  echo "argument -f must be provided".
+  usage 
+  exit 1
+  fi
+
+  if [ ! "$OUTPUT_DIR" ]; then
+  echo "argument -o must be provided".
+  usage 
+  exit 1
+  fi
+
+  splitter
+}
+
+function error() {
+  local err_message
+  err_message="$1"
+
+  echo "${err_message}" >&2
+  exit 1
+
+}
+
+function usage() {
+  printf '
+kube-splitter
+
+Seperates a single Kubernetes YAML file in multiple files based-on there Kind
+
+Usage: kube-splitter [options]
+
+Options:
+  -h        Shows this screen.
+  -v        Prints every line this script executes.
+  -f        Filename or URL to files to use.
+  -o        Output directory where to write the files.
+'
+}
+
+function splitter() {
+    # Check if yq is installed
+    if ! command -v yq &> /dev/null; then
+        echo "yq is not installed. Please install it before running this script."
+        exit 1
+    fi
+
+    # Create a directory to store split YAML files
+    mkdir -p "$OUTPUT_DIR"
+
+    # Loop through the YAML file and split by kind
+    for kind in $(yq eval '.kind' "$INPUT_FILE" | sort -u | grep -v -- '---'); do
+        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE > "$OUTPUT_DIR/${kind,,}.yaml" 
+    done
+
+    echo "YAML files have been split by kind and saved in the $OUTPUT_DIR directory."
+}
+
+main "$@"
