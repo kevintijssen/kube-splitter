@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -eo pipefail
 
@@ -6,11 +6,13 @@ set -eo pipefail
 VERBOSE="false"
 
 function main() {
-  while getopts ":f:o:vh" flag; do
+  while getopts ":f:o:dvhV" flag; do
     case "${flag}" in
-      v) VERBOSE="true" ;;
+      d) DRY_RUN="true" ;;
       f) INPUT_FILE=$OPTARG;;
       o) OUTPUT_DIR=$OPTARG;;
+      V) version ;;
+      v) VERBOSE="true" ;;
       h) usage ;;
       :) printf "missing argument for -%s\n" "$OPTARG" >&2; echo "$usage" >&2; exit 1;;
      \?) error "Unexpected flag $OPTARG"; usage; exit 1;;
@@ -26,15 +28,15 @@ function main() {
   fi
 
   if [ ! "$INPUT_FILE" ]; then
-  echo "argument -f must be provided".
-  usage 
-  exit 1
+    echo "argument -f must be provided".
+    usage 
+    exit 1
   fi
 
   if [ ! "$OUTPUT_DIR" ]; then
-  echo "argument -o must be provided".
-  usage 
-  exit 1
+    echo "argument -o must be provided".
+    usage 
+    exit 1
   fi
 
   splitter
@@ -50,37 +52,46 @@ function error() {
 }
 
 function usage() {
-  printf '
-kube-splitter
-
-Seperates a single Kubernetes YAML file in multiple files based-on there Kind
-
-Usage: kube-splitter [options]
+  printf 'Usage: kube-splitter [options]
 
 Options:
-  -h        Shows this screen.
-  -v        Prints every line this script executes.
+  -d        Only prints the content that would be created, without creating it.
   -f        Filename or URL to files to use.
+  -h        Shows this screen.
   -o        Output directory where to write the files.
+  -v        Prints every line this script executes.
+  -V        Shows version.
+
 '
+  exit 0
+}
+
+function version() {
+  printf 'kube-splitter (https://github.com/kevintijssen/kube-splitter/) version v0.0.1
+
+Seperates a single Kubernetes YAML file in multiple files based-on there Kind
+'
+  exit 0
 }
 
 function splitter() {
     # Check if yq is installed
     if ! command -v yq &> /dev/null; then
-        echo "yq is not installed. Please install it before running this script."
-        exit 1
+      echo "yq is not installed. Please install it before running this script."
+      exit 1
     fi
-
-    # Create a directory to store split YAML files
-    mkdir -p "$OUTPUT_DIR"
 
     # Loop through the YAML file and split by kind
     for kind in $(yq eval '.kind' "$INPUT_FILE" | sort -u | grep -v -- '---'); do
-        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE > "$OUTPUT_DIR/${kind,,}.yaml" 
+      if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "### ${kind,,}.yaml ###"
+        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE
+      else
+        # Create a directory to store split YAML files
+        mkdir -p "$OUTPUT_DIR"
+        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE > "$OUTPUT_DIR/${kind,,}.yaml"
+      fi
     done
-
-    echo "YAML files have been split by kind and saved in the $OUTPUT_DIR directory."
 }
 
 main "$@"
