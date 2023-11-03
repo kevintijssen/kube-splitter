@@ -4,7 +4,7 @@ a lightweight application to seperates a single Kubernetes YAML file in multiple
 
 ## Install
 
-### [Download the latest binary](https://github.com/kevintijssen/kube-spltter/releases/latest)
+### [Download the latest binary](https://github.com/kevintijssen/kube-splitter/releases/latest)
 
 ### wget
 Use wget to download:
