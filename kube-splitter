@@ -19,7 +19,6 @@ function main() {
     esac
   done
 
-  readonly INPUT_FILE
   readonly OUTPUT_DIR
   readonly VERBOSE
 
@@ -67,7 +66,7 @@ Options:
 }
 
 function version() {
-  printf 'kube-splitter (https://github.com/kevintijssen/kube-splitter/) version v0.0.1
+  printf 'kube-splitter (https://github.com/kevintijssen/kube-splitter/) version v0.0.2
 
 Seperates a single Kubernetes YAML file in multiple files based-on there Kind
 '
@@ -81,15 +80,22 @@ function splitter() {
       exit 1
     fi
 
+    # Read STDIN
+    if [ "$INPUT_FILE" == "-" ]; then
+      INPUT_CONTENT=$(</dev/stdin)
+    else
+      INPUT_CONTENT=$(cat $INPUT_FILE)
+    fi
+
     # Loop through the YAML file and split by kind
-    for kind in $(yq eval '.kind' "$INPUT_FILE" | sort -u | grep -v -- '---'); do
+    for kind in $(echo "$INPUT_CONTENT" | yq eval '.kind'  | sort -u | grep -v -- '---'); do
       if [[ "${DRY_RUN}" == "true" ]]; then
         echo "### ${kind,,}.yaml ###"
-        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE
+        echo "$INPUT_CONTENT" | yq -M eval-all "select(.kind == \"$kind\")"
       else
         # Create a directory to store split YAML files
         mkdir -p "$OUTPUT_DIR"
-        yq eval-all "select(.kind == \"$kind\")" $INPUT_FILE > "$OUTPUT_DIR/${kind,,}.yaml"
+        echo "$INPUT_CONTENT" | yq -M eval-all "select(.kind == \"$kind\")" > "$OUTPUT_DIR/${kind,,}.yaml"
       fi
     done
 }
