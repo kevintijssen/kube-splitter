@@ -1,6 +1,6 @@
 # kube-splitter
 
-a lightweight application to seperates a single Kubernetes YAML file in multiple files based-on there Kind.
+a lightweight application to seperates a single Kubernetes YAML file in multiple files based-on there kind.
 
 ## Install
 
